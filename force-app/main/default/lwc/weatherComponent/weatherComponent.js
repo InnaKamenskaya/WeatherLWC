@@ -11,59 +11,58 @@ const fields = [SHIPPING_CITY_FIELD, SHIPPING_COUNTRY_FIELD, SHIPPING_STATE_FIEL
 
 export default class WeatherComponent extends LightningElement {
     @api recordId;
-    @wire(getRecord, {recordId: '$recordId', fields})
-    account;
-    hasRendered = false;
     @track weather = {
         temp: 0,
         wind: 0,
         humidity: 0
     }
-   
-    currentWeather(){
-        if(!getFieldValue(this.account.data, SHIPPING_CITY_FIELD)){
-            return;
-        }else{
-            fetch("https://api.openweathermap.org/data/2.5/weather?q=" + getFieldValue(this.account.data, SHIPPING_CITY_FIELD) + "&units=metric"  + "&appid=" + getFieldValue(this.account.data, WHEATHER_KEY_FIELD),
-        {
-            method:"GET",
-            headers:{
-                "Accept":"application/json"
-            }
-        })
-        .then (response => {
-            if(response.ok){                
-                return response.json();
-            }
-        })
-        .then(jsonResponse => {
-            this.weather.temp = (jsonResponse['main'].temp);
-            this.weather.wind = jsonResponse['wind'].speed;
-            this.weather.humidity = jsonResponse['main'].humidity;
-            return this.weather;
-        }).catch(error => {
-            console.log('CALLOUT ERROR ===> ' + error);
-        });
-        loadStyle(this, weather).then(result => {
-            console.log('what is the result? ', result);
-        });
-        }        
-    }
-
-    renderedCallback(){
-        this.currentWeather();
-        if(this.hasRendered){
-            return;
+    @wire(getRecord, {recordId: '$recordId', fields})
+    account(result){
+        if(result.data){
+            fetch("https://api.openweathermap.org/data/2.5/weather?q=" + getFieldValue(result.data, SHIPPING_CITY_FIELD) + "&units=metric"  + "&appid=" + getFieldValue(result.data, WHEATHER_KEY_FIELD),
+            {
+                method:"GET",
+                headers:{
+                    "Accept":"application/json"
+                }
+            })
+            .then (response => {
+                if(response.ok){                
+                    return response.json();
+                }
+            })
+            .then(jsonResponse => {
+                this.weather.temp = (jsonResponse['main'].temp);
+                this.weather.wind = jsonResponse['wind'].speed;
+                this.weather.humidity = jsonResponse['main'].humidity;
+                return this.weather;
+            }).catch(error => {
+                this.dispatchEvent(
+                    new ShowToastEvent({
+                           title: 'Error!', 
+                           message: error.message, 
+                           variant: 'error'
+                       }),
+                  );   
+            });
+            loadStyle(this, weather);
+        }else if(result.error){
+            this.dispatchEvent(
+                new ShowToastEvent({
+                       title: 'Error!', 
+                       message: error.message, 
+                       variant: 'error'
+                   }),
+              );   
         }
-        this.hasRendered = true;        
-    }
+    }   
 
     get currentTemp(){
         return Math.round(this.weather.temp) +  '\u2103';
     }
 
     get currentWindSpeed(){
-        return this.weather.wind + "m/s";
+        return Math.round(this.weather.wind) + "m/s";
     }
 
     get currentHumidity(){
